@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 
-# taken from https://github.com/playwright-community/heroku-playwright-buildpack/blob/master/bin/compile
 set -e
 
 BUILD_DIR=$1
 ENV_DIR=$3
 
-# taken (and modified a bit) from https://devcenter.heroku.com/articles/buildpack-api#bin-compile 
 export_env_dir() {
   acceptlist_regex='(BUILDPACK_BROWSERS_INSTALL_PATH|PLAYWRIGHT_BUILDPACK_BROWSERS)'
   denylist_regex='^(PATH|GIT_DIR|CPATH|CPPATH|LD_PRELOAD|LIBRARY_PATH)$'
@@ -21,37 +19,22 @@ export_env_dir() {
 
 export_env_dir
 
-# modify the installation location
+# Set the installation location and the browser to Chromium only
 BUILDPACK_BROWSERS_INSTALL_PATH=${BUILDPACK_BROWSERS_INSTALL_PATH:-"/browsers"}
-
-PLAYWRIGHT_BUILDPACK_BROWSERS=${PLAYWRIGHT_BUILDPACK_BROWSERS:-chromium,firefox,webkit}
+PLAYWRIGHT_BUILDPACK_BROWSERS=${PLAYWRIGHT_BUILDPACK_BROWSERS:-chromium}
 
 export PLAYWRIGHT_BROWSERS_PATH=$BUILD_DIR/$BUILDPACK_BROWSERS_INSTALL_PATH
 echo "-----> BUILDPACK_BROWSERS_INSTALL_PATH is $BUILDPACK_BROWSERS_INSTALL_PATH"
 echo "-----> Browsers will be installed in $PLAYWRIGHT_BROWSERS_PATH"
-echo "-----> Installing Playwright executables (env: PLAYWRIGHT_BUILDPACK_BROWSERS) for ${PLAYWRIGHT_BUILDPACK_BROWSERS} (formatted value for command line is '${PLAYWRIGHT_BUILDPACK_BROWSERS//,/ }')."
-playwright install ${PLAYWRIGHT_BUILDPACK_BROWSERS//,/ }
+echo "-----> Installing Playwright executables for Chromium only."
+playwright install chromium
 echo "-----> Installation done"
 
-# export the file path as a ENV
-# this is meant to be copied over to the $BUILD_DIR under .profile.d/heroku-playwright-python-browsers-defaults.sh and then run
-
+# Export the Chromium executable path as an ENV variable
 cat <<EOF > $BUILD_DIR/.profile.d/heroku-playwright-python-browsers-defaults.sh
 CHROMIUM_EXECUTABLE_PATH=\$(find ~+ -type f -name "chrome")
 echo "----> CHROMIUM_EXECUTABLE_PATH is \$CHROMIUM_EXECUTABLE_PATH"
 if [ "\$CHROMIUM_EXECUTABLE_PATH" != "" ]; then
   export CHROMIUM_EXECUTABLE_PATH=\$CHROMIUM_EXECUTABLE_PATH
-fi
-
-FIREFOX_EXECUTABLE_PATH=\$(find ~+ -type f -name "firefox")
-echo "----> FIREFOX_EXECUTABLE_PATH is \$FIREFOX_EXECUTABLE_PATH"
-if [ "\$FIREFOX_EXECUTABLE_PATH" != "" ]; then
-  export FIREFOX_EXECUTABLE_PATH=\$FIREFOX_EXECUTABLE_PATH
-fi
-
-WEBKIT_EXECUTABLE_PATH=\$(find ~+ -type f -name "pw_run.sh") # see https://github.com/microsoft/playwright/issues/2923
-echo "----> WEBKIT_EXECUTABLE_PATH is \$WEBKIT_EXECUTABLE_PATH"
-if [ "\$WEBKIT_EXECUTABLE_PATH" != "" ]; then
-  export WEBKIT_EXECUTABLE_PATH=\$WEBKIT_EXECUTABLE_PATH
 fi
 EOF
